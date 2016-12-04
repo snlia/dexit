@@ -4,6 +4,8 @@ from protocol import *
 import socket
 import select
 import sys
+import os
+from random import shuffle
 
 __author__ = "snlia"
 __email__ = "chinsnlia@gmail.com"
@@ -31,6 +33,7 @@ def broadcastData(sock, message):
 
 
 def sendData(sock, message):
+    print(list(message))
     ''' send message to sock'''
     global totPlayer
     try:
@@ -85,32 +88,63 @@ def handleName(mes, sock):
     else:
         PlayerList.append(sock)
         ReadyList.append(False)
-        NameList.append(list(mes[2:2 + mes[1]]))
+        NameList.append(mes[2:2 + mes[1]])
         totPlayer += 1
         broadcastRoom(None)
+    return 2 + mes[1]
     # end handleName
 
 
 def handleReady(sock):
+    global card
     Id = PlayerList.index(sock)
     ReadyList[Id] = True
     broadcastRoom(None)
+    if ((False not in ReadyList) and totPlayer > 1):
+        for i in range(totPlayer):
+            sendData(PlayerList[i], bytes([S_TYPE_BEGINGAME] + card[:6]))
+            card = card[6:]
+        broadcastData(None, mission)
     # end handleReady
+
+
+def handleDownload(mes, sock):
+    pass
+
+
+def handleDrawCard(sock):
+    pass
 
 
 def handleMes(mes, sock):
     ''' handle messages recieved from sock'''
-    if mes[0] == C_TYPE_NAME:
-        handleName(mes, sock)
-    elif mes[0] == C_TYPE_READY:
-        handleReady(sock)
+    while mes != []:
+        print("here!")
+        if mes[0] == C_TYPE_NAME:
+            mes = mes[handleName(mes, sock):]
+        elif mes[0] == C_TYPE_READY:
+            handleReady(sock)
+            mes = mes[1:]
+        elif mes[0] == C_TYPE_DOWNLOAD:
+            handleDownload(mes, sock)
+        elif mes[0] == C_TYPE_DRAWCARD:
+            handleDrawCard(sock)
+            mes = mes[1:]
 
 
 if __name__ == "__main__":
-    global CONNECTION_LIST, totPlayer
+    global CONNECTION_LIST, totPlayer, card
 
     # List to keep track of socket descriptors
     CONNECTION_LIST = []
+    TOTCARD = 80
+    BLOCKSIZE = 2048
+    mission = [S_TYPE_MISSION, TOTCARD]
+    for i in range(TOTCARD):
+        mission.append(os.path.getsize('data/' + str(i) + '.jpg') // BLOCKSIZE)
+    mission = bytes(mission)
+    card = list(range(TOTCARD))
+    shuffle(card)
     RECV_BUFFER = 4096  # Advisable to keep it as an exponent of 2
     PORT = 5000
 
@@ -150,7 +184,7 @@ if __name__ == "__main__":
                     # In Windows, sometimes when a TCP program closes abruptly,
                     # a "Connection reset by peer" exception will be thrown
                     data = sock.recv(RECV_BUFFER)
-                    handleMes(data, sock)
+                    handleMes(list(data), sock)
 
                 except:
                     print ("Client (%s, %s) is offline" % addr)

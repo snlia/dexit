@@ -6,6 +6,7 @@ from PyQt5.QtGui import QPixmap
 from UI import Ui_mainWindow
 import socket as sk
 import select
+import os
 import sys
 from protocol import *
 
@@ -41,9 +42,14 @@ class Main(QMainWindow, Ui_mainWindow):
     ready = False
     PLabel = [None, None, None, None]
     PHand = [None, None, None, None, None, None]
+    BHand = [None, None, None, None, None, None]
     PShow = [None, None, None, None]
+    BShow = [None, None, None, None]
+    handCard = [-1, -1, -1, -1, -1, -1]
     namePlayer = [None, None, None, None]
     readyPlayer = [None, None, None, None]
+    Pending0 = []
+    Pending1 = []
     buf = []
 
     def __init__(self):
@@ -51,6 +57,16 @@ class Main(QMainWindow, Ui_mainWindow):
         self.setupUi(self)
         self.IPEdit.setText('localhost')
         self.PortEdit.setText('5000')
+        self.SetVariate()
+        self.SetVisible()
+        for i in range(6):
+            self.PHand[i].resize(80, 140)
+        for i in range(4):
+            self.PShow[i].resize(80, 140)
+        self.log = open('log', 'a')
+    # end __init__
+
+    def SetVariate(self):
         self.PLabel[0] = self.P0Label
         self.PLabel[1] = self.P1Label
         self.PLabel[2] = self.P2Label
@@ -65,15 +81,17 @@ class Main(QMainWindow, Ui_mainWindow):
         self.PShow[1] = self.showPic1
         self.PShow[2] = self.showPic2
         self.PShow[3] = self.showPic3
-        self.SetVisible()
-        for i in range(6):
-            self.PHand[i].resize(80, 140)
-        for i in range(4):
-            self.PShow[i].resize(80, 140)
-        # path = QPixmap(r'data/01.jpg')
-        # self.handPic0.setPixmap(path)
-        self.log = open('log', 'a')
-    # end __init__
+        self.BHand[0] = self.handButton0
+        self.BHand[1] = self.handButton1
+        self.BHand[2] = self.handButton2
+        self.BHand[3] = self.handButton3
+        self.BHand[4] = self.handButton4
+        self.BHand[5] = self.handButton5
+        self.BShow[0] = self.showButton0
+        self.BShow[1] = self.showButton1
+        self.BShow[2] = self.showButton2
+        self.BShow[3] = self.showButton3
+    # end SetVariate
 
     def SetVisible(self):
         ''' set the initial visibility'''
@@ -85,9 +103,41 @@ class Main(QMainWindow, Ui_mainWindow):
         self.descEdit.hide()
         for i in range(6):
             self.PHand[i].hide()
+            self.BHand[i].hide()
         for i in range(4):
             self.PShow[i].hide()
+            self.BShow[i].hide()
     # end SetVisible
+
+    def ChoseHand0(self):
+        self.ChoseHand(0)
+
+    def ChoseHand1(self):
+        self.ChoseHand(1)
+
+    def ChoseHand2(self):
+        self.ChoseHand(2)
+
+    def ChoseHand3(self):
+        self.ChoseHand(3)
+
+    def ChoseHand4(self):
+        self.ChoseHand(4)
+
+    def ChoseHand5(self):
+        self.ChoseHand(5)
+
+    def ChoseShow0(self):
+        self.ChoseShow(0)
+
+    def ChoseShow1(self):
+        self.ChoseShow(1)
+
+    def ChoseShow2(self):
+        self.ChoseShow(2)
+
+    def ChoseShow3(self):
+        self.ChoseShow(3)
 
     def getID(self, Id):
         return (Id + self.totPlayer - self.myID) % self.totPlayer
@@ -178,10 +228,74 @@ class Main(QMainWindow, Ui_mainWindow):
             return 0
     # end UpdateRoomInfo
 
+    def ShowHandCard(self):
+        for i in range(6):
+            if self.handCard[i] != -1 and self.downloaded[self.handCard[i]] > 0:
+                self.PHand[i].show()
+                path = QPixmap(r'data/' + str(self.handCard[i]) + '.jpg')
+                self.PHand[i].setPixmap(path)
+            else:
+                self.PHand[i].hide()
+    # end ShowHandCard
+
+    def BeginGame(self, mes):
+        try:
+            for i in range(6):
+                self.handCard[i] = mes[1 + i]
+            return 7
+        except:
+            return 0
+    # end BeginGame
+
+    def Download(self, mes):
+        x = -1
+        while (self.Pending0 != []):
+            if (self.downloaded[Pending0[0]] == self.mission[Pending0[0]]):
+                Pending0 = Pending0[1:]
+            else:
+                x = Pending0[0]
+                break
+        if (x != -1):
+            self.socket.send(bytes([C_TYPE_DOWNLOAD, x, self.downloaded[x]]))
+            return
+        while (self.Pending1 != []):
+            if (self.downloaded[Pending1[0]] == self.mission[Pending1[0]]):
+                Pending1 = Pending1[1:]
+            else:
+                x = Pending1[0]
+                break
+        if (x != -1):
+            self.socket.send(bytes([C_TYPE_DOWNLOAD, x, self.downloaded[x]]))
+            return
+
+    def handleMission(self, mes):
+        try:
+            # FIXME we only accept a pic that is less than 512K
+            tot = mes[1]
+            self.mission = [0] * tot
+            for i in range(tot):
+                self.mission[i] = mes[2 + i]
+            self.downloaded = [0] * tot
+            for i in range(tot):
+                if os.path.exists('data/' + str(i) + '.jpg'):
+                    self.downloaded[i] = self.mission[i]
+                else:
+                    self.Pending1.append(i)
+                    f = open('data/' + str(i) + '.jpg', 'w')
+                    f.close()
+            for i in range(6):
+                self.Pending0.append(self.handCard[i])
+            self.ShowHandCard()
+            self.Download()
+            return tot + 2
+        except:
+            return 0
+
     def handleMes(self, mes):
         self.buf += mes
         self.log.write(str(mes) + '\n')
         while self.buf != []:
+            print(self.buf)
             if (self.buf[0] == S_TYPE_FULLROOM):
                 QMessageBox.information(self, "错误", "房间已满！")
                 self.buf = self.buf[1:]
@@ -193,7 +307,27 @@ class Main(QMainWindow, Ui_mainWindow):
                 if (length == 0):
                     break
                 self.buf = self.buf[length:]
+            elif (self.buf[0] == S_TYPE_BEGINGAME):
+                length = self.BeginGame(self.buf)
+                if (length == 0):
+                    break
+                self.buf = self.buf[length:]
+            elif (self.buf[0] == S_TYPE_MISSION):
+                length = self.handleMission(self.buf)
+                if (length == 0):
+                    break
+                self.buf = self.buf[length:]
+
     # end handleMes
+
+    def ChoseShow(x):
+        print("ChoseShow" + x)
+    # end ChoseShow
+
+    def ChoseHand(x):
+        print("ChoseHand" + x)
+    # end ChoseShow
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
