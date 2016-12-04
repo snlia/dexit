@@ -2,6 +2,7 @@
 
 from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox
 from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt5.QtGui import QPixmap
 from UI import Ui_mainWindow
 import socket as sk
 import select
@@ -31,7 +32,6 @@ class MainThread(QThread):
                 data = sock.recv(4096)
                 if not data:
                     return
-                print(list(data))
                 self.triggle.emit(list(data))
         # end run
 
@@ -40,19 +40,38 @@ class Main(QMainWindow, Ui_mainWindow):
     entered = False
     ready = False
     PLabel = [None, None, None, None]
+    PHand = [None, None, None, None, None, None]
+    PShow = [None, None, None, None]
     namePlayer = [None, None, None, None]
     readyPlayer = [None, None, None, None]
+    buf = []
 
     def __init__(self):
         super(Main, self).__init__()
         self.setupUi(self)
-        self.SetVisible()
         self.IPEdit.setText('localhost')
         self.PortEdit.setText('5000')
         self.PLabel[0] = self.P0Label
         self.PLabel[1] = self.P1Label
         self.PLabel[2] = self.P2Label
         self.PLabel[3] = self.P3Label
+        self.PHand[0] = self.handPic0
+        self.PHand[1] = self.handPic1
+        self.PHand[2] = self.handPic2
+        self.PHand[3] = self.handPic3
+        self.PHand[4] = self.handPic4
+        self.PHand[5] = self.handPic5
+        self.PShow[0] = self.showPic0
+        self.PShow[1] = self.showPic1
+        self.PShow[2] = self.showPic2
+        self.PShow[3] = self.showPic3
+        self.SetVisible()
+        for i in range(6):
+            self.PHand[i].resize(80, 140)
+        for i in range(4):
+            self.PShow[i].resize(80, 140)
+        # path = QPixmap(r'data/01.jpg')
+        # self.handPic0.setPixmap(path)
         self.log = open('log', 'a')
     # end __init__
 
@@ -63,6 +82,11 @@ class Main(QMainWindow, Ui_mainWindow):
         self.P2Label.hide()
         self.P3Label.hide()
         self.ReadyButton.hide()
+        self.descEdit.hide()
+        for i in range(6):
+            self.PHand[i].hide()
+        for i in range(4):
+            self.PShow[i].hide()
     # end SetVisible
 
     def getID(self, Id):
@@ -124,40 +148,51 @@ class Main(QMainWindow, Ui_mainWindow):
     # end showallmember
 
     def UpdateRoomInfo(self, mes):
-        self.totPlayer = mes[1]
-        self.myID = mes[2]
-        x = 3
-        # Update infomation
-        for i in range(self.totPlayer):
-            tmp = mes[x]
-            x += 1
-            self.namePlayer[i] = bytes(mes[x:tmp + x]).decode()
-            x += tmp
-        for i in range(self.totPlayer):
-            self.readyPlayer[i] = mes[x + i] > 0
+        try:
+            self.totPlayer = mes[1]
+            self.myID = mes[2]
+            x = 3
+            # Update infomation
+            for i in range(self.totPlayer):
+                tmp = mes[x]
+                x += 1
+                self.namePlayer[i] = bytes(mes[x:tmp + x]).decode()
+                x += tmp
 
-        for i in range(4):
-            self.PLabel[i].hide()
-        print(self.myID)
+            for i in range(self.totPlayer):
+                self.readyPlayer[i] = mes[x + i] > 0
 
-        # Update Labels
-        for i in range(self.totPlayer):
-            nameI = self.namePlayer[i]
-            if (self.readyPlayer[i]):
-                nameI += '[准备]'
-            self.PLabel[self.getPosID(i)].setText(nameI)
-            self.PLabel[self.getPosID(i)].show()
-        self.showAllMember()
+            for i in range(4):
+                self.PLabel[i].hide()
+
+            # Update Labels
+            for i in range(self.totPlayer):
+                nameI = self.namePlayer[i]
+                if (self.readyPlayer[i]):
+                    nameI += '[准备]'
+                self.PLabel[self.getPosID(i)].setText(nameI)
+                self.PLabel[self.getPosID(i)].show()
+                self.showAllMember()
+            return x + self.totPlayer
+        except:
+            return 0
     # end UpdateRoomInfo
 
     def handleMes(self, mes):
-        self.log.write(str(mes))
-        if (mes[0] == S_TYPE_FULLROOM):
-            QMessageBox.information(self, "错误", "房间已满！")
-        elif (mes[0] == S_TYPE_GAMEHASSTART):
-            QMessageBox.information(self, "错误", "游戏已经开始！")
-        elif (mes[0] == S_TYPE_ROOMINFO):
-            self.UpdateRoomInfo(mes)
+        self.buf += mes
+        self.log.write(str(mes) + '\n')
+        while self.buf != []:
+            if (self.buf[0] == S_TYPE_FULLROOM):
+                QMessageBox.information(self, "错误", "房间已满！")
+                self.buf = self.buf[1:]
+            elif (self.buf[0] == S_TYPE_GAMEHASSTART):
+                QMessageBox.information(self, "错误", "游戏已经开始！")
+                self.buf = self.buf[1:]
+            elif (self.buf[0] == S_TYPE_ROOMINFO):
+                length = self.UpdateRoomInfo(self.buf)
+                if (length == 0):
+                    break
+                self.buf = self.buf[length:]
     # end handleMes
 
 if __name__ == '__main__':
