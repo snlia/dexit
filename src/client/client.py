@@ -29,6 +29,8 @@ class MainThread(QThread):
             for sock in read_list:
                 # recive all data into buf
                 data = sock.recv(4096)
+                if not data:
+                    return
                 print(list(data))
                 self.triggle.emit(list(data))
         # end run

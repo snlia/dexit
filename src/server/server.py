@@ -76,8 +76,12 @@ def handleName(mes, sock):
     global totPlayer
     if totPlayer == 4:
         sendData(sock, bytes([S_TYPE_FULLROOM]))
+        sock.close()
+        CONNECTION_LIST.remove(sock)
     elif BeginGame:
         sendData(sock, bytes([S_TYPE_GAMEHASSTART]))
+        sock.close()
+        CONNECTION_LIST.remove(sock)
     else:
         PlayerList.append(sock)
         ReadyList.append(False)
