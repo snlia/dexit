@@ -125,6 +125,7 @@ def handleReady(sock):
 
 
 def handleDownload(mes, sock):
+    # TODO : 向客户端发送它所需的数据
     pass
 
 

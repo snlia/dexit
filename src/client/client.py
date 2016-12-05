@@ -455,6 +455,15 @@ class Main(QMainWindow, Ui_mainWindow):
         sys.exit()
     # end handleEndGame
 
+    def handleDownload(self, mes):
+        try:
+            # TODO : 接受从服务器传来的消息，更新手牌和展示牌的显示
+            # do_something
+            self.Download()
+        except:
+            print('gg Download')
+            return 0
+
     def handleMes(self, mes):
         ''' 处理由服务器发出的信息，该函数会被线程中的run启用 '''
         self.buf += mes
@@ -508,6 +517,11 @@ class Main(QMainWindow, Ui_mainWindow):
             elif (self.buf[0] == S_TYPE_ENDGAME):
                 self.handleEndGame()
                 self.buf = self.buf[1:]
+            elif (self.buf[0] == S_TYPE_DOWNLOAD):
+                length = self.handleDownload(self.buf)
+                if (length == 0):
+                    break
+                self.buf = self.buf[length:]
     # end handleMes
 
     def ChoseShow(self, x):
