@@ -163,23 +163,13 @@ def handleShowChose(mes, sock):
             data.append(ChoseListS[i])
         for i in range(totPlayer):
             data.append(ChoseListH[i])
-        print("gg")
-        print(data)
-        print(bytes(data))
         broadcastData(None, bytes(data))
-        print("gg")
         turnID += 1
-        print("gg")
         if (turnID == totPlayer):
-            print("gg")
             turnID = 0
-            print("gg")
             roundID += 1
-        print("gg")
         if roundID == MAXROUND:
-            print("gg")
             broadcastData(None, bytes([S_TYPE_ENDGAME]))
-            print("gg")
             # sys.exit()
         else:
             sendData(PlayerList[turnID], bytes([S_TYPE_BANKER]))
@@ -189,9 +179,7 @@ def handleShowChose(mes, sock):
 
 def handleMes(mes, sock):
     ''' handle messages recieved from sock'''
-    print("GG?")
     while mes != []:
-        print("here!")
         print(mes)
         if mes[0] == C_TYPE_NAME:
             mes = mes[handleName(mes, sock):]
@@ -209,7 +197,6 @@ def handleMes(mes, sock):
             mes = mes[handleHandChose(mes, sock):]
         elif mes[0] == C_TYPE_CHOSESHOW:
             mes = mes[handleShowChose(mes, sock):]
-    print("GG!")
 
 
 if __name__ == "__main__":
