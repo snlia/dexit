@@ -16,6 +16,7 @@ __email__ = "chinsnlia@gmail.com"
 
 
 class MainThread(QThread):
+    ''' 在这里进行与服务端的通信'''
     triggle = pyqtSignal(list)
 
     def __init__(self, socket):
@@ -25,6 +26,7 @@ class MainThread(QThread):
         pass
 
     def run(self):
+        '''接受信息，并由triggle发送信号让Main进行处理'''
         while(1):
             read_list, write_list, error_list = \
                 select.select([self.socket], [], [])
@@ -39,24 +41,24 @@ class MainThread(QThread):
 
 
 class Main(QMainWindow, Ui_mainWindow):
-    entered = False
-    ready = False
-    PLabel = [None, None, None, None]
-    PHand = [None, None, None, None, None, None]
-    LPick = [None, None, None, None]
-    LFrom = [None, None, None, None]
-    BHand = [None, None, None, None, None, None]
-    PShow = [None, None, None, None]
-    BShow = [None, None, None, None]
-    handCard = [-1, -1, -1, -1, -1, -1]
-    showCard = [-1, -1, -1, -1]
-    namePlayer = [None, None, None, None]
-    readyPlayer = [None, None, None, None]
-    scorePlayer = [0, 0, 0, 0]
-    Pending0 = []
-    Pending1 = []
-    buf = []
-    banker = False
+    entered = False  # 是否进入游戏
+    ready = False  # 是否准备游戏
+    PLabel = [None, None, None, None]  # 用于名字展示
+    PHand = [None, None, None, None, None, None]  # 用于手牌展示
+    LPick = [None, None, None, None]  # 用于展示每张图片有谁选
+    LFrom = [None, None, None, None]  # 用于展示每张牌是谁的
+    BHand = [None, None, None, None, None, None]  # 用于选择手牌
+    PShow = [None, None, None, None]  # 用于展示大家选了啥牌
+    BShow = [None, None, None, None]  # 用于选择展示的牌
+    handCard = [-1, -1, -1, -1, -1, -1]  # 记录手牌
+    showCard = [-1, -1, -1, -1]  # 记录展示的牌
+    namePlayer = [None, None, None, None]  # 记录玩家的名字
+    readyPlayer = [None, None, None, None]  # 记录玩家是否准备
+    scorePlayer = [0, 0, 0, 0]  # 记录玩家分数
+    Pending0 = []  # 优先度最高的下载队列
+    Pending1 = []  # 优先度最低的下载队列
+    buf = []  # 将从服务端传来的信息放到buffer中，以连续处理，或是等待消息发送
+    banker = False  # 是否是庄家
 
     def __init__(self, app):
         super(Main, self).__init__()
@@ -74,6 +76,7 @@ class Main(QMainWindow, Ui_mainWindow):
     # end __init__
 
     def SetVariate(self):
+        ''' 设置一些变量 '''
         self.PLabel[0] = self.P0Label
         self.PLabel[1] = self.P1Label
         self.PLabel[2] = self.P2Label
@@ -157,14 +160,17 @@ class Main(QMainWindow, Ui_mainWindow):
         self.ChoseShow(3)
 
     def getID(self, Id):
+        ''' 返回相对于自己的ID '''
         return (Id + self.totPlayer - self.myID) % self.totPlayer
     # end getID
 
     def getPosID(self, Id):
+        ''' 返回相对于自己的位置 '''
         return (Id + 4 - self.myID) % 4
-    # end getID
+    # end getPosID
 
     def EnterRoom(self):
+        ''' 进入房间，发送信息给服务器，初始化socket并启动线程 '''
         IP = self.IPEdit.text()
         port = int(self.PortEdit.text())
         name = self.NameEdit.text()
@@ -198,12 +204,14 @@ class Main(QMainWindow, Ui_mainWindow):
     # end EnterRoom
 
     def Ready(self):
+        ''' 准备，发送消息给服务器 '''
         # send ready info
         self.socket.send(bytes([C_TYPE_READY]))
         self.ReadyButton.hide()
     # end Ready
 
     def showAllMember(self):
+        ''' 修改布局 '''
         if self.entered is False:
             print ("Enter Room with name:" + self.namePlayer[self.myID])
             self.IPEdit.hide()
@@ -216,6 +224,7 @@ class Main(QMainWindow, Ui_mainWindow):
     # end showallmember
 
     def UpdateRoomInfo(self, mes):
+        ''' 将成员信息更新 '''
         try:
             self.totPlayer = mes[1]
             self.myID = mes[2]
@@ -248,6 +257,7 @@ class Main(QMainWindow, Ui_mainWindow):
     # end UpdateRoomInfo
 
     def ShowBanker(self):
+        ''' 显示庄家信息 '''
         self.descEdit.show()
         for i in range(6):
             self.BHand[i].show()
@@ -256,6 +266,7 @@ class Main(QMainWindow, Ui_mainWindow):
     # end ShowBanker
 
     def ShowShowCard(self):
+        ''' 显示展示图片 '''
         for i in range(self.totPlayer):
             if self.showCard[i] != -1 and self.downloaded[self.showCard[i]] > 0:
                 self.PShow[i].show()
@@ -266,6 +277,7 @@ class Main(QMainWindow, Ui_mainWindow):
     # end ShowShowCard
 
     def ShowHandCard(self):
+        ''' 更新手牌 '''
         for i in range(6):
             if self.handCard[i] != -1 and self.downloaded[self.handCard[i]] > 0:
                 self.PHand[i].show()
@@ -276,6 +288,7 @@ class Main(QMainWindow, Ui_mainWindow):
     # end ShowHandCard
 
     def BeginGame(self, mes):
+        ''' 开始游戏，装载手牌信息并设置界面 '''
         try:
             for i in range(6):
                 self.handCard[i] = mes[1 + i]
@@ -291,10 +304,11 @@ class Main(QMainWindow, Ui_mainWindow):
     # end BeginGame
 
     def Download(self):
+        ''' 根据下载队列进行任务选择'''
         x = -1
         while (self.Pending0 != []):
             if (self.downloaded[self.Pending0[0]] ==
-                self.mission[self.Pending0[0]]):
+               self.mission[self.Pending0[0]]):
                 self.Pending0 = self.Pending0[1:]
             else:
                 x = self.Pending0[0]
@@ -304,7 +318,7 @@ class Main(QMainWindow, Ui_mainWindow):
             return
         while (self.Pending1 != []):
             if (self.downloaded[self.Pending1[0]] ==
-                self.mission[self.Pending1[0]]):
+               self.mission[self.Pending1[0]]):
                 self.Pending1 = self.Pending1[1:]
             else:
                 x = self.Pending1[0]
@@ -315,6 +329,7 @@ class Main(QMainWindow, Ui_mainWindow):
     # end Download
 
     def handleMission(self, mes):
+        ''' 将任务接受，加入任务队列，并开始下载... '''
         # FIXME we only accept a pic that is less than 512K
         tot = mes[1]
         self.mission = [0] * tot
@@ -336,6 +351,7 @@ class Main(QMainWindow, Ui_mainWindow):
     # end handleMission
 
     def handleDrawCard(self, mes):
+        ''' 处理摸牌信息 '''
         try:
             self.handCard[self.handCard.index(-1)] = mes[1]
             self.ShowHandCard()
@@ -346,11 +362,11 @@ class Main(QMainWindow, Ui_mainWindow):
     # end handleDrawCard
 
     def handleDesc(self, mes):
+        ''' 显示庄家的描述，开始选择手牌作为展示牌 '''
         try:
             endst = 2 + mes[1]
             self.DescLabel.setText('庄家描述：' + bytes(mes[2:endst]).decode())
             self.DescLabel.show()
-            self.banker = False
             for i in range(6):
                 self.BHand[i].show()
             return endst
@@ -360,6 +376,7 @@ class Main(QMainWindow, Ui_mainWindow):
     # end handleDesc
 
     def handleAllPic(self, mes):
+        ''' 将展示牌显示，开始选择哪张牌是庄家的 '''
         try:
             for i in range(self.totPlayer):
                 self.showCard[i] = mes[1 + i]
@@ -378,6 +395,7 @@ class Main(QMainWindow, Ui_mainWindow):
     # end handleAllPic
 
     def handleAllPick(self, mes):
+        ''' 显示各玩家选择信息 '''
         banker = mes[1]
         pickP = [0, 0, 0, 0]
         fromP = [0, 0, 0, 0]
@@ -412,6 +430,8 @@ class Main(QMainWindow, Ui_mainWindow):
                     else:
                         self.scorePlayer[i] += 1
         self.app.processEvents()
+        self.banker = False
+        # FIXME: 使用更好的展示效果
         time.sleep(2)
         for i in range(self.totPlayer):
             self.PLabel[self.getPosID(i)].setText(self.namePlayer[i] +
@@ -428,6 +448,7 @@ class Main(QMainWindow, Ui_mainWindow):
     # end handleAllPick
 
     def handleEndGame(self):
+        ''' 结束游戏 '''
         QMessageBox.information(self, "游戏结束！", "获胜的是" +
                                 self.namePlayer[self.scorePlayer.index(
                                     max(self.scorePlayer))] + '!')
@@ -435,6 +456,7 @@ class Main(QMainWindow, Ui_mainWindow):
     # end handleEndGame
 
     def handleMes(self, mes):
+        ''' 处理由服务器发出的信息，该函数会被线程中的run启用 '''
         self.buf += mes
         self.log.write(str(mes) + '\n')
         while self.buf != []:
@@ -489,12 +511,14 @@ class Main(QMainWindow, Ui_mainWindow):
     # end handleMes
 
     def ChoseShow(self, x):
+        ''' 选择展示牌 '''
         self.socket.send(bytes([C_TYPE_CHOSESHOW, self.showCard[x]]))
         for i in range(4):
             self.BShow[i].hide()
     # end ChoseShow
 
     def ChoseHand(self, x):
+        ''' 选择手牌 '''
         if self.banker:
             if len(self.descEdit.text()) == 0:
                 QMessageBox.information(self, "错误", "描述不能为空！")
