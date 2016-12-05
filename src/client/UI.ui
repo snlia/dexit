@@ -306,8 +306,8 @@
    <widget class="QLineEdit" name="descEdit">
     <property name="geometry">
      <rect>
-      <x>220</x>
-      <y>320</y>
+      <x>170</x>
+      <y>540</y>
       <width>331</width>
       <height>26</height>
      </rect>
@@ -461,8 +461,8 @@
    <widget class="QLabel" name="DescLabel">
     <property name="geometry">
      <rect>
-      <x>220</x>
-      <y>320</y>
+      <x>170</x>
+      <y>540</y>
       <width>241</width>
       <height>21</height>
      </rect>

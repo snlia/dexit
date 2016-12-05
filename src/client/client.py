@@ -363,7 +363,7 @@ class Main(QMainWindow, Ui_mainWindow):
             for i in range(self.totPlayer):
                 self.showCard[i] = mes[1 + i]
                 self.Pending0.append(mes[1 + i])
-            if self.banker == self.myID:
+            if self.banker:
                 self.DescLabel.setText('庄家描述:' + self.descEdit.text())
                 self.DescLabel.show()
             self.ShowShowCard()
@@ -518,7 +518,6 @@ class Main(QMainWindow, Ui_mainWindow):
                 self.BHand[i].hide()
             self.handCard[x] = -1
             self.ShowHandCard()
-            self.DescLabel.hide()
             self.socket.send(bytes([C_TYPE_DRAWCARD]))
     # end ChoseHand
 
