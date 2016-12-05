@@ -8,6 +8,7 @@ import socket as sk
 import select
 import os
 import sys
+import time
 from protocol import *
 
 __author__ = "snlia"
@@ -42,15 +43,20 @@ class Main(QMainWindow, Ui_mainWindow):
     ready = False
     PLabel = [None, None, None, None]
     PHand = [None, None, None, None, None, None]
+    LPick = [None, None, None, None]
+    LFrom = [None, None, None, None]
     BHand = [None, None, None, None, None, None]
     PShow = [None, None, None, None]
     BShow = [None, None, None, None]
     handCard = [-1, -1, -1, -1, -1, -1]
+    showCard = [-1, -1, -1, -1]
     namePlayer = [None, None, None, None]
     readyPlayer = [None, None, None, None]
+    scorePlayer = [0, 0, 0, 0]
     Pending0 = []
     Pending1 = []
     buf = []
+    banker = False
 
     def __init__(self):
         super(Main, self).__init__()
@@ -62,7 +68,7 @@ class Main(QMainWindow, Ui_mainWindow):
         for i in range(6):
             self.PHand[i].resize(80, 140)
         for i in range(4):
-            self.PShow[i].resize(80, 140)
+            self.PShow[i].resize(100, 175)
         self.log = open('log', 'a')
     # end __init__
 
@@ -91,6 +97,14 @@ class Main(QMainWindow, Ui_mainWindow):
         self.BShow[1] = self.showButton1
         self.BShow[2] = self.showButton2
         self.BShow[3] = self.showButton3
+        self.LPick[0] = self.pickLabel0
+        self.LPick[1] = self.pickLabel1
+        self.LPick[2] = self.pickLabel2
+        self.LPick[3] = self.pickLabel3
+        self.LFrom[0] = self.fromLabel0
+        self.LFrom[1] = self.fromLabel1
+        self.LFrom[2] = self.fromLabel2
+        self.LFrom[3] = self.fromLabel3
     # end SetVariate
 
     def SetVisible(self):
@@ -107,6 +121,8 @@ class Main(QMainWindow, Ui_mainWindow):
         for i in range(4):
             self.PShow[i].hide()
             self.BShow[i].hide()
+            self.LFrom[i].hide()
+            self.LPick[i].hide()
     # end SetVisible
 
     def ChoseHand0(self):
@@ -184,6 +200,7 @@ class Main(QMainWindow, Ui_mainWindow):
         # send ready info
         self.socket.send(bytes([C_TYPE_READY]))
         self.ReadyButton.hide()
+    # end Ready
 
     def showAllMember(self):
         if self.entered is False:
@@ -225,8 +242,27 @@ class Main(QMainWindow, Ui_mainWindow):
                 self.showAllMember()
             return x + self.totPlayer
         except:
+            print('gg RoomInfo')
             return 0
     # end UpdateRoomInfo
+
+    def ShowBanker(self):
+        self.descEdit.show()
+        for i in range(6):
+            self.BHand[i].show()
+            self.banker = True
+        self.DescLabel.hide()
+    # end ShowBanker
+
+    def ShowShowCard(self):
+        for i in range(self.totPlayer):
+            if self.showCard[i] != -1 and self.downloaded[self.showCard[i]] > 0:
+                self.PShow[i].show()
+                path = QPixmap(r'data/' + str(self.showCard[i]) + '.jpg')
+                self.PShow[i].setPixmap(path)
+            else:
+                self.PHand[i].hide()
+    # end ShowShowCard
 
     def ShowHandCard(self):
         for i in range(6):
@@ -242,54 +278,159 @@ class Main(QMainWindow, Ui_mainWindow):
         try:
             for i in range(6):
                 self.handCard[i] = mes[1 + i]
+            for i in range(self.totPlayer):
+                self.PLabel[self.getPosID(i)].setText(self.namePlayer[i] + '[0分]')
+                self.scorePlayer[i] = 0
+            self.DescLabel.setText('请等待庄家选择...')
+            self.DescLabel.show()
             return 7
         except:
+            print('gg BeginGame')
             return 0
     # end BeginGame
 
-    def Download(self, mes):
+    def Download(self):
         x = -1
         while (self.Pending0 != []):
-            if (self.downloaded[Pending0[0]] == self.mission[Pending0[0]]):
-                Pending0 = Pending0[1:]
+            if (self.downloaded[self.Pending0[0]] ==
+                self.mission[self.Pending0[0]]):
+                self.Pending0 = self.Pending0[1:]
             else:
-                x = Pending0[0]
+                x = self.Pending0[0]
                 break
         if (x != -1):
             self.socket.send(bytes([C_TYPE_DOWNLOAD, x, self.downloaded[x]]))
             return
         while (self.Pending1 != []):
-            if (self.downloaded[Pending1[0]] == self.mission[Pending1[0]]):
-                Pending1 = Pending1[1:]
+            if (self.downloaded[self.Pending1[0]] ==
+                self.mission[self.Pending1[0]]):
+                self.Pending1 = self.Pending1[1:]
             else:
-                x = Pending1[0]
+                x = self.Pending1[0]
                 break
         if (x != -1):
             self.socket.send(bytes([C_TYPE_DOWNLOAD, x, self.downloaded[x]]))
             return
+    # end Download
 
     def handleMission(self, mes):
+        # FIXME we only accept a pic that is less than 512K
+        tot = mes[1]
+        self.mission = [0] * tot
+        for i in range(tot):
+            self.mission[i] = mes[2 + i]
+        self.downloaded = [0] * tot
+        for i in range(tot):
+            if os.path.exists('data/' + str(i) + '.jpg'):
+                self.downloaded[i] = self.mission[i]
+            else:
+                self.Pending1.append(i)
+                f = open('data/' + str(i) + '.jpg', 'w')
+                f.close()
+        for i in range(6):
+            self.Pending0.append(self.handCard[i])
+        self.ShowHandCard()
+        self.Download()
+        return tot + 2
+    # end handleMission
+
+    def handleDrawCard(self, mes):
         try:
-            # FIXME we only accept a pic that is less than 512K
-            tot = mes[1]
-            self.mission = [0] * tot
-            for i in range(tot):
-                self.mission[i] = mes[2 + i]
-            self.downloaded = [0] * tot
-            for i in range(tot):
-                if os.path.exists('data/' + str(i) + '.jpg'):
-                    self.downloaded[i] = self.mission[i]
-                else:
-                    self.Pending1.append(i)
-                    f = open('data/' + str(i) + '.jpg', 'w')
-                    f.close()
-            for i in range(6):
-                self.Pending0.append(self.handCard[i])
+            self.handCard[self.handCard.index(-1)] = mes[1]
             self.ShowHandCard()
-            self.Download()
-            return tot + 2
+            return 2
         except:
+            print('gg DrawCard')
             return 0
+    # end handleDrawCard
+
+    def handleDesc(self, mes):
+        try:
+            endst = 2 + mes[1]
+            self.DescLabel.setText('庄家描述：' + bytes(mes[2:endst]).decode())
+            self.DescLabel.show()
+            self.banker = False
+            for i in range(6):
+                self.BHand[i].show()
+            return endst
+        except:
+            print('gg Desc')
+            return 0
+    # end handleDesc
+
+    def handleAllPic(self, mes):
+        try:
+            for i in range(self.totPlayer):
+                self.showCard[i] = mes[1 + i]
+                self.Pending0.append(mes[1 + i])
+            if self.banker == self.myID:
+                self.DescLabel.setText('庄家描述:' + self.descEdit.text())
+                self.DescLabel.show()
+            self.ShowShowCard()
+            if not self.banker:
+                for i in range(self.totPlayer):
+                    self.BShow[i].show()
+            return 1 + self.totPlayer
+        except:
+            print('gg AllPic')
+            return 0
+    # end handleAllPic
+
+    def handleAllPick(self, mes):
+        banker = mes[1]
+        pickP = [0,0,0,0]
+        fromP = [0,0,0,0]
+        for i in range(self.totPlayer):
+            pickP[i] = mes[2 + i]
+            fromP[i] = mes[2 + i + self.totPlayer]
+            self.LPick[i].setText('')
+            self.LPick[i].show()
+        pickRight = 0
+        for i in range(self.totPlayer):
+            idP = self.showCard.index(fromP[i])
+            self.LFrom[idP].setText('from:\n' + self.namePlayer[i])
+            self.LFrom[idP].show()
+            if i != banker:
+                idP = self.showCard.index(pickP[i])
+                self.LPick[idP].setText(self.LPick[idP].text() + '\n' +
+                                        self.namePlayer[i])
+                if pickP[i] == fromP[banker]:
+                    pickRight += 1
+
+        if pickRight == self.totPlayer - 1 or pickRight == 0:
+            for i in range(self.totPlayer):
+                if i != banker:
+                    self.scorePlayer[i] += 2
+        else:
+            self.scorePlayer[banker] += 3
+            for i in range(self.totPlayer):
+                if i != banker:
+                    if pickP[i] != fromP[banker]:
+                        idP = fromP.index(pickP[i])
+                        self.scorePlayer[idP] += 1
+                    else:
+                        self.scorePlayer[i] += 1
+        for i in range(self.totPlayer):
+            self.PLabel[self.getPosID(i)].setText(self.namePlayer[i] +
+                                                    '[' +
+                                                    str(self.scorePlayer[i]) +
+                                                    ']')
+        time.sleep(5)
+        for i in range(self.totPlayer):
+            self.PShow[i].hide()
+            self.LPick[i].hide()
+            self.LFrom[i].hide()
+        self.DescLabel.setText('请等待庄家选择...')
+        self.DescLabel.show()
+        return 2 + 2 * self.totPlayer
+    # end handleAllPick
+
+    def handleEndGame(self):
+        QMessageBox.information(self, "游戏结束！", "获胜的是" +
+                                self.namePlayer[self.scorePlayer.index(
+                                    max(self.scorePlayer))] + '!')
+        sys.exit()
+    # end handleEndGame
 
     def handleMes(self, mes):
         self.buf += mes
@@ -317,16 +458,69 @@ class Main(QMainWindow, Ui_mainWindow):
                 if (length == 0):
                     break
                 self.buf = self.buf[length:]
-
+            elif (self.buf[0] == S_TYPE_BANKER):
+                self.ShowBanker()
+                self.buf = self.buf[1:]
+            elif (self.buf[0] == S_TYPE_DRAWCARD):
+                length = self.handleDrawCard(self.buf)
+                if (length == 0):
+                    break
+                self.buf = self.buf[length:]
+            elif (self.buf[0] == S_TYPE_BANKERDESC):
+                length = self.handleDesc(self.buf)
+                if (length == 0):
+                    break
+                self.buf = self.buf[length:]
+            elif (self.buf[0] == S_TYPE_ALLPIC):
+                length = self.handleAllPic(self.buf)
+                if (length == 0):
+                    break
+                self.buf = self.buf[length:]
+            elif (self.buf[0] == S_TYPE_ALLPICK):
+                length = self.handleAllPick(self.buf)
+                if (length == 0):
+                    break
+                self.buf = self.buf[length:]
+            elif (self.buf[0] == S_TYPE_ENDGAME):
+                self.handleEndGame()
+                self.buf = self.buf[1:]
     # end handleMes
 
-    def ChoseShow(x):
-        print("ChoseShow" + x)
+    def ChoseShow(self, x):
+        self.socket.send(bytes([C_TYPE_CHOSESHOW, self.showCard[x]]))
+        for i in range(4):
+            self.BShow[i].hide()
     # end ChoseShow
 
-    def ChoseHand(x):
-        print("ChoseHand" + x)
-    # end ChoseShow
+    def ChoseHand(self, x):
+        if self.banker:
+            if len(self.descEdit.text()) == 0:
+                QMessageBox.information(self, "错误", "描述不能为空！")
+                return
+            if len(self.descEdit.text().encode('utf-8')) > 255:
+                QMessageBox.information(self,
+                                        "错误", "描述长度不能超过255字节！")
+                return
+            self.socket.send(bytes([C_TYPE_BANKERINFO, self.handCard[x],
+                                    len(self.descEdit.text().encode('utf-8'))]
+                                   ) + self.descEdit.text().encode('utf-8'))
+            for i in range(6):
+                self.BHand[i].hide()
+            self.handCard[x] = -1
+            self.ShowHandCard()
+            self.descEdit.hide()
+            self.DescLabel.setText('请等待其他玩家选择...')
+            self.DescLabel.show()
+            self.socket.send(bytes([C_TYPE_DRAWCARD]))
+        else:
+            self.socket.send(bytes([C_TYPE_CHOSEHAND, self.handCard[x]]))
+            for i in range(6):
+                self.BHand[i].hide()
+            self.handCard[x] = -1
+            self.ShowHandCard()
+            self.DescLabel.hide()
+            self.socket.send(bytes([C_TYPE_DRAWCARD]))
+    # end ChoseHand
 
 
 if __name__ == '__main__':

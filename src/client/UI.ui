@@ -56,7 +56,7 @@
    <widget class="QLabel" name="P0Label">
     <property name="geometry">
      <rect>
-      <x>323</x>
+      <x>643</x>
       <y>450</y>
       <width>101</width>
       <height>20</height>
@@ -120,7 +120,7 @@
    <widget class="QPushButton" name="ReadyButton">
     <property name="geometry">
      <rect>
-      <x>430</x>
+      <x>750</x>
       <y>450</y>
       <width>41</width>
       <height>20</height>
@@ -469,7 +469,7 @@
     </property>
     <property name="font">
      <font>
-      <pointsize>22</pointsize>
+      <pointsize>14</pointsize>
      </font>
     </property>
     <property name="text">
@@ -477,6 +477,113 @@
     </property>
     <property name="scaledContents">
      <bool>true</bool>
+    </property>
+   </widget>
+   <widget class="QLabel" name="pickLabel0">
+    <property name="geometry">
+     <rect>
+      <x>210</x>
+      <y>180</y>
+      <width>100</width>
+      <height>18</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+   </widget>
+   <widget class="QLabel" name="pickLabel1">
+    <property name="geometry">
+     <rect>
+      <x>310</x>
+      <y>180</y>
+      <width>100</width>
+      <height>18</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="textFormat">
+     <enum>Qt::AutoText</enum>
+    </property>
+   </widget>
+   <widget class="QLabel" name="pickLabel2">
+    <property name="geometry">
+     <rect>
+      <x>410</x>
+      <y>180</y>
+      <width>100</width>
+      <height>18</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+   </widget>
+   <widget class="QLabel" name="pickLabel3">
+    <property name="geometry">
+     <rect>
+      <x>510</x>
+      <y>180</y>
+      <width>100</width>
+      <height>18</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+   </widget>
+   <widget class="QLabel" name="fromLabel0">
+    <property name="geometry">
+     <rect>
+      <x>210</x>
+      <y>355</y>
+      <width>100</width>
+      <height>18</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+   </widget>
+   <widget class="QLabel" name="fromLabel1">
+    <property name="geometry">
+     <rect>
+      <x>310</x>
+      <y>355</y>
+      <width>100</width>
+      <height>18</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+   </widget>
+   <widget class="QLabel" name="fromLabel2">
+    <property name="geometry">
+     <rect>
+      <x>410</x>
+      <y>355</y>
+      <width>100</width>
+      <height>18</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+   </widget>
+   <widget class="QLabel" name="fromLabel3">
+    <property name="geometry">
+     <rect>
+      <x>510</x>
+      <y>355</y>
+      <width>100</width>
+      <height>18</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
     </property>
    </widget>
   </widget>

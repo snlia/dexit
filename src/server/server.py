@@ -10,11 +10,22 @@ from random import shuffle
 __author__ = "snlia"
 __email__ = "chinsnlia@gmail.com"
 
+MAXROUND = 3
+TOTCARD = 80
+BLOCKSIZE = 2048
+
 PlayerList = []
 ReadyList = []
 NameList = []
+card = []
+ChoseListH = []
+ChoseListS = []
 BeginGame = False
+totChoseH = 0
+totChoseS = 0
 totPlayer = 0
+turnID = 0
+roundID = 0
 
 
 # Function to broadcast chat messages to all connected clients
@@ -88,6 +99,8 @@ def handleName(mes, sock):
     else:
         PlayerList.append(sock)
         ReadyList.append(False)
+        ChoseListH.append(255)
+        ChoseListS.append(255)
         NameList.append(mes[2:2 + mes[1]])
         totPlayer += 1
         broadcastRoom(None)
@@ -96,7 +109,7 @@ def handleName(mes, sock):
 
 
 def handleReady(sock):
-    global card
+    global card, turnID, roundID
     Id = PlayerList.index(sock)
     ReadyList[Id] = True
     broadcastRoom(None)
@@ -105,6 +118,9 @@ def handleReady(sock):
             sendData(PlayerList[i], bytes([S_TYPE_BEGINGAME] + card[:6]))
             card = card[6:]
         broadcastData(None, mission)
+        turnID = 0
+        roundID = 0
+        sendData(PlayerList[turnID], bytes([S_TYPE_BANKER]))
     # end handleReady
 
 
@@ -113,13 +129,70 @@ def handleDownload(mes, sock):
 
 
 def handleDrawCard(sock):
-    pass
+    global card
+    sendData(sock, bytes([S_TYPE_DRAWCARD, card[0]]))
+    card = card[1:]
+
+
+def handleBanker(mes, sock):
+    global totChoseH, totChoseS
+    totChoseH = 0
+    totChoseS = 0
+    desc = mes[2:3 + mes[2]]
+    ChoseListH[PlayerList.index(sock)] = mes[1]
+    broadcastData(sock, bytes([S_TYPE_BANKERDESC] + desc))
+    return 3 + mes[2]
+
+
+def handleHandChose(mes, sock):
+    global totChoseH
+    totChoseH += 1
+    ChoseListH[PlayerList.index(sock)] = mes[1]
+    if totChoseH == totPlayer - 1:
+        broadcastData(None, bytes([S_TYPE_ALLPIC] + ChoseListH[:totPlayer]))
+    return 2
+
+
+def handleShowChose(mes, sock):
+    global totChoseS, turnID, roundID
+    totChoseS += 1
+    ChoseListS[PlayerList.index(sock)] = mes[1]
+    if totChoseS == totPlayer - 1:
+        data = [S_TYPE_ALLPICK, turnID]
+        for i in range(totPlayer):
+            data.append(ChoseListS[i])
+        for i in range(totPlayer):
+            data.append(ChoseListH[i])
+        print("gg")
+        print(data)
+        print(bytes(data))
+        broadcastData(None, bytes(data))
+        print("gg")
+        turnID += 1
+        print("gg")
+        if (turnID == totPlayer):
+            print("gg")
+            turnID = 0
+            print("gg")
+            roundID += 1
+        print("gg")
+        if roundID == MAXROUND:
+            print("gg")
+            broadcastData(None, bytes([S_TYPE_ENDGAME]))
+            print("gg")
+            # sys.exit()
+        else:
+            sendData(PlayerList[turnID], bytes([S_TYPE_BANKER]))
+
+    return 2
 
 
 def handleMes(mes, sock):
     ''' handle messages recieved from sock'''
+    print("GG?")
     while mes != []:
         print("here!")
+        print(mes)
         if mes[0] == C_TYPE_NAME:
             mes = mes[handleName(mes, sock):]
         elif mes[0] == C_TYPE_READY:
@@ -130,15 +203,20 @@ def handleMes(mes, sock):
         elif mes[0] == C_TYPE_DRAWCARD:
             handleDrawCard(sock)
             mes = mes[1:]
+        elif mes[0] == C_TYPE_BANKERINFO:
+            mes = mes[handleBanker(mes, sock):]
+        elif mes[0] == C_TYPE_CHOSEHAND:
+            mes = mes[handleHandChose(mes, sock):]
+        elif mes[0] == C_TYPE_CHOSESHOW:
+            mes = mes[handleShowChose(mes, sock):]
+    print("GG!")
 
 
 if __name__ == "__main__":
-    global CONNECTION_LIST, totPlayer, card
+    global CONNECTION_LIST, totPlayer, card, roundID
 
     # List to keep track of socket descriptors
     CONNECTION_LIST = []
-    TOTCARD = 80
-    BLOCKSIZE = 2048
     mission = [S_TYPE_MISSION, TOTCARD]
     for i in range(TOTCARD):
         mission.append(os.path.getsize('data/' + str(i) + '.jpg') // BLOCKSIZE)
