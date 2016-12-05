@@ -58,9 +58,10 @@ class Main(QMainWindow, Ui_mainWindow):
     buf = []
     banker = False
 
-    def __init__(self):
+    def __init__(self, app):
         super(Main, self).__init__()
         self.setupUi(self)
+        self.app = app
         self.IPEdit.setText('localhost')
         self.PortEdit.setText('5000')
         self.SetVariate()
@@ -378,8 +379,8 @@ class Main(QMainWindow, Ui_mainWindow):
 
     def handleAllPick(self, mes):
         banker = mes[1]
-        pickP = [0,0,0,0]
-        fromP = [0,0,0,0]
+        pickP = [0, 0, 0, 0]
+        fromP = [0, 0, 0, 0]
         for i in range(self.totPlayer):
             pickP[i] = mes[2 + i]
             fromP[i] = mes[2 + i + self.totPlayer]
@@ -388,7 +389,7 @@ class Main(QMainWindow, Ui_mainWindow):
         pickRight = 0
         for i in range(self.totPlayer):
             idP = self.showCard.index(fromP[i])
-            self.LFrom[idP].setText('from:\n' + self.namePlayer[i])
+            self.LFrom[idP].setText('from:' + self.namePlayer[i])
             self.LFrom[idP].show()
             if i != banker:
                 idP = self.showCard.index(pickP[i])
@@ -410,12 +411,13 @@ class Main(QMainWindow, Ui_mainWindow):
                         self.scorePlayer[idP] += 1
                     else:
                         self.scorePlayer[i] += 1
+        self.app.processEvents()
+        time.sleep(2)
         for i in range(self.totPlayer):
             self.PLabel[self.getPosID(i)].setText(self.namePlayer[i] +
-                                                    '[' +
-                                                    str(self.scorePlayer[i]) +
-                                                    ']')
-        time.sleep(5)
+                                                  '[' +
+                                                  str(self.scorePlayer[i]) +
+                                                  ']')
         for i in range(self.totPlayer):
             self.PShow[i].hide()
             self.LPick[i].hide()
@@ -524,6 +526,6 @@ class Main(QMainWindow, Ui_mainWindow):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    main = Main()
+    main = Main(app)
     main.show()
     sys.exit(app.exec_())
